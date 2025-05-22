@@ -196,4 +196,3 @@ class STNkd(nn.Module):
         x = x + iden
         x = x.view(-1, self.k, self.k)
         return x
-        

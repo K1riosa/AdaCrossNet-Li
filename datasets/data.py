@@ -51,7 +51,7 @@ trans_img_2 = transforms.Compose([transforms.Grayscale(1),
                                 transforms.Normalize(0.485, 0.229, inplace = True)])
 
 def load_modelnet_data(partition, cat = 40):
-    BASE_DIR = '/home/virgantara/PythonProjects/DualGraphPoint'
+    BASE_DIR = 'D:\cloud_point'
     DATA_DIR = os.path.join(BASE_DIR, 'data')
     all_data, new_all_data = [],[]
     all_label, new_all_label= [],[]
@@ -144,15 +144,36 @@ def load_shapenet_data():
     return all_filepath
 
 def get_render_imgs(pcd_path):
+    # 标准化路径分隔符，确保在所有系统上都能正常工作
+    pcd_path = pcd_path.replace('\\', '/')
     path_lst = pcd_path.split('/')
-
-    path_lst[1] = 'ShapeNetRendering'
+    
+    # 添加路径长度检查
+    if len(path_lst) <= 1:
+        print(f"Warning: Path too short: {pcd_path}")
+        return []  # 返回空列表表示没有找到渲染图像
+    
+    # 检查数据路径结构
+    print(f"Debug - Path list: {path_lst}")
+    
+    # 以更安全的方式修改路径
+    if len(path_lst) > 1:
+        path_lst[1] = 'ShapeNetRendering'
+    else:
+        # 如果路径结构不符合预期，尝试构建一个替代路径
+        base_dir = os.path.dirname(pcd_path)
+        path_lst = [base_dir, 'ShapeNetRendering']
+    
     path_lst[-1] = path_lst[-1][:-4]
     path_lst.append('rendering')
     
     DIR = '/'.join(path_lst)
     img_path_list = glob.glob(os.path.join(DIR, '*.png'))
-    # print(img_path_list)
+    
+    # 调试信息
+    print(f"Looking for images in: {DIR}")
+    print(f"Found {len(img_path_list)} images")
+    
     return img_path_list
 
 class ShapeNetRender(Dataset):

@@ -45,11 +45,11 @@ def parse_args():
     parser.add_argument('--dataset_name', type=str, default='modelnet40svm', metavar='N',
                         choices=['modelnet40svm', 'scanobjectnnsvm'],
                         help='Dataset name to test, [modelnet40svm, scanobjectnnsvm]')
-    parser.add_argument('--batch_size', type=int, default=32, metavar='batch_size',
+    parser.add_argument('--batch_size', type=int, default=4, metavar='batch_size',
                         help='Size of batch)')
-    parser.add_argument('--test_batch_size', type=int, default=16, metavar='batch_size',
+    parser.add_argument('--test_batch_size', type=int, default=4, metavar='batch_size',
                         help='Size of batch)')
-    parser.add_argument('--epochs', type=int, default=250, metavar='N',
+    parser.add_argument('--epochs', type=int, default=1, metavar='N',
                         help='number of episode to train ')
     parser.add_argument('--start_epoch', type=int, default=0, metavar='N',
                         help='number of episode to train ')

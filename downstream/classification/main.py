@@ -48,11 +48,11 @@ def parse_args():
                         help='Model to use, [pointnet, dgcnn]')
     parser.add_argument('--dataset', type=str, default='modelnet40', metavar='N',
                         choices=['modelnet40'])
-    parser.add_argument('--batch_size', type=int, default=32, metavar='batch_size',
+    parser.add_argument('--batch_size', type=int, default=8, metavar='batch_size',
                         help='Size of batch)')
-    parser.add_argument('--test_batch_size', type=int, default=16, metavar='batch_size',
+    parser.add_argument('--test_batch_size', type=int, default=8, metavar='batch_size',
                         help='Size of batch)')
-    parser.add_argument('--epochs', type=int, default=200, metavar='N',
+    parser.add_argument('--epochs', type=int, default=1, metavar='N',
                         help='number of episode to train ')
     parser.add_argument('--use_sgd', type=bool, default=1,
                         help='Use SGD')
@@ -85,6 +85,7 @@ def parse_args():
     return parser.parse_args()
 
 def train(args, io):
+
     if args.percent_train:
         train_loader = DataLoader(ModelNet40Subset(partition='train', num_points=args.num_points, normalize=args.normalize_input, percent=args.percent_train), num_workers=8,
                               batch_size=args.batch_size, shuffle=True, drop_last=True)
@@ -105,11 +106,24 @@ def train(args, io):
         raise Exception("Not implemented")
     print(str(model))
 
-    checkpoint = torch.load(args.pretrain_path)
-    model.load_state_dict(checkpoint, strict=False)
-    for name, param in model.named_parameters():
-        if name in checkpoint:
-            print(name)
+    # 修改这一部分，添加检查是否提供预训练路径
+    if args.pretrain_path and args.pretrain_path.strip() != '':
+        try:
+            print(f"Loading pretrained model from: {args.pretrain_path}")
+            checkpoint = torch.load(args.pretrain_path)
+            model.load_state_dict(checkpoint, strict=False)
+            
+            # 打印加载了哪些层
+            for name, param in model.named_parameters():
+                if name in checkpoint:
+                    print(f"Loaded parameter: {name}")
+            
+            print("Pretrained model loaded successfully")
+        except Exception as e:
+            print(f"Failed to load pretrained model: {e}")
+            print("Training from scratch instead")
+    else:
+        print("No pretrained model specified, training from scratch")
 
     # model = nn.DataParallel(model)
 
@@ -187,7 +201,21 @@ def train(args, io):
 
         if test_acc >= best_test_acc:
             best_test_acc = test_acc
-            torch.save(model.state_dict(), 'checkpoints/%s/models/model.t7' % args.exp_name)
+            save_path = 'checkpoints/%s/models/model.t7' % args.exp_name
+            torch.save(model.state_dict(), save_path)
+            io.cprint(f"Model saved to {save_path}")
+            
+        # 每10个epoch保存一次检查点（可选）
+        if (epoch + 1) % 10 == 0:
+            save_path = f'checkpoints/{args.exp_name}/models/model_epoch_{epoch+1}.t7'
+            torch.save(model.state_dict(), save_path)
+            io.cprint(f"Checkpoint saved to {save_path}")
+    
+    # 训练结束后保存最终模型
+    final_save_path = f'checkpoints/{args.exp_name}/models/model_final.t7'
+    torch.save(model.state_dict(), final_save_path)
+    io.cprint(f"Final model saved to {final_save_path}")
+    io.cprint(f"Best test accuracy: {best_test_acc:.6f}")
 
 def test(args, io):
     test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points),
@@ -196,9 +224,24 @@ def test(args, io):
     #Try to load models
     model = DGCNN(args).to(device)
     # model = nn.DataParallel(model)
-    checkpoint = torch.load(args.pretrain_path)
-    model.load_state_dict(checkpoint, strict=False)
-    # model.load_state_dict(torch.load(args.model_path))
+    
+    # 修改这一部分，添加检查是否提供模型路径
+    model_path = args.model_path if args.model_path else args.pretrain_path
+    
+    if model_path and model_path.strip() != '':
+        try:
+            print(f"Loading model from: {model_path}")
+            checkpoint = torch.load(model_path)
+            model.load_state_dict(checkpoint, strict=False)
+            print("Model loaded successfully")
+        except Exception as e:
+            print(f"Failed to load model: {e}")
+            io.cprint("Error: Cannot load model for testing!")
+            return
+    else:
+        io.cprint("Error: No model path specified for testing!")
+        return
+    
     model = model.eval()
     test_acc = 0.0
     count = 0.0
